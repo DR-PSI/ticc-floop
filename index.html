@@ -60,8 +60,11 @@ nav button{flex:1;background:none;border:0;padding:9px 4px 11px;color:var(--mute
 nav button .ic{font-size:19px;line-height:1}
 nav button.on{color:var(--ink);font-weight:600}
 
-/* legend on map */
-.legend{position:absolute;z-index:500;left:10px;right:10px;top:10px;display:flex;gap:6px;overflow-x:auto;pointer-events:none}
+/* map modes + legend */
+.modes{position:absolute;z-index:510;left:10px;right:10px;top:10px;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.modes button{flex:none;background:rgba(255,255,255,.97);border:1px solid var(--line);border-radius:10px;padding:6px 11px;font-size:13px;box-shadow:0 1px 3px rgba(13,59,82,.12)}
+.modes button.on{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+.legend{position:absolute;z-index:500;left:10px;right:10px;top:52px;display:flex;gap:6px;overflow-x:auto;pointer-events:none}
 .legend .chip{pointer-events:auto}
 .chip{flex:none;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;box-shadow:0 1px 3px rgba(13,59,82,.12)}
 .chip b{font-weight:700}
@@ -71,9 +74,9 @@ nav button.on{color:var(--ink);font-weight:600}
 
 /* list */
 .tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.tools input{flex:1;min-width:160px;border:1px solid var(--line);border-radius:10px;padding:7px 11px;background:#fff}
-.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
-.seg button{border:0;background:none;padding:6px 11px;font-size:13px;color:var(--muted)}
+.tools input[type=search]{flex:1;min-width:160px;border:1px solid var(--line);border-radius:10px;padding:7px 11px;background:#fff}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow-x:auto;background:#fff;max-width:100%}
+.seg button{border:0;background:none;padding:6px 11px;font-size:13px;color:var(--muted);white-space:nowrap;flex:none}
 .seg button.on{background:var(--ink);color:#fff}
 .row{display:flex;gap:12px;align-items:stretch;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px;width:100%;text-align:left}
 .gauge{width:14px;border-radius:5px;background:#e3ecf1;position:relative;overflow:hidden;flex:none;min-height:50px}
@@ -130,6 +133,20 @@ textarea.inp{min-height:110px;font-size:13px}
 #toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--text);color:#fff;padding:9px 16px;border-radius:10px;font-size:14px;z-index:3000;display:none;max-width:90vw}
 .leaflet-container{font-family:inherit}
 .pin{border-radius:50%;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.wx{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:6px}
+.wx>div{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.45;color:var(--muted)}
+.wx small{display:block;color:var(--muted)}
+.wx b{display:block;font-size:15px;margin:1px 0 2px}
+.ai{border-left:4px solid var(--nd);background:#f4f8fa}
+.ai p{margin:5px 0 3px;color:var(--text)}
+.ai small{color:var(--muted)}
+.ev{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px;line-height:1.45}
+.ev:first-child{border-top:0}
+.ev .ic{font-size:18px;flex:none;width:24px;text-align:center}
+.ev .tx{flex:1;min-width:0}
+.ev small{display:block;color:var(--muted)}
+.ev img{width:70px;height:70px;object-fit:cover;border-radius:8px;flex:none;background:var(--panel2)}
+.chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -158,6 +175,7 @@ textarea.inp{min-height:110px;font-size:13px}
 <main>
   <section class="view on" id="v-map">
     <div id="map"></div>
+    <div class="modes" id="modes"></div>
     <div class="legend" id="legend"></div>
     <div class="pickbar" id="pickbar" hidden>
       <span>แตะแผนที่ตรงตำแหน่ง site</span><span class="sp"></span>
@@ -172,10 +190,26 @@ textarea.inp{min-height:110px;font-size:13px}
         <div class="seg" id="flt">
           <button data-f="all" class="on">ทั้งหมด</button>
           <button data-f="risk">เฝ้าระวังขึ้นไป</button>
+          <button data-f="fc">⏳ เสี่ยงใน 3 ชม.</button>
           <button data-f="nd">ไม่มีข้อมูล</button>
         </div>
       </div>
       <div id="list"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-events">
+    <div class="pad">
+      <div class="tools">
+        <div class="seg" id="evk">
+          <button data-k="all" class="on">ทั้งหมด</button><button data-k="flood">🌊 น้ำท่วม</button>
+          <button data-k="wire">⚡ สายไฟ</button><button data-k="fire">🔥 ไฟไหม้</button><button data-k="quake">〰️ แผ่นดินไหว</button>
+        </div>
+        <select class="inp" id="evSite" style="max-width:240px" aria-label="เลือก site"></select>
+        <label class="chk"><input type="checkbox" id="evPhoto"> เฉพาะที่มีรูป</label>
+      </div>
+      <p class="hint">เหตุการณ์ 24 ชม. ล่าสุดใกล้ site ของคุณ จากการแจ้งของประชาชน (Traffy Fondue) และ Longdo Traffic · อัปเดตทุก 15 นาที</p>
+      <div class="card" id="evList"></div>
     </div>
   </section>
 
@@ -263,6 +297,7 @@ textarea.inp{min-height:110px;font-size:13px}
 <nav id="nav">
   <button data-v="map" class="on"><span class="ic">🗺️</span>แผนที่</button>
   <button data-v="list"><span class="ic">📋</span>รายการ site</button>
+  <button data-v="events"><span class="ic">🚨</span>เหตุการณ์</button>
   <button data-v="manage" id="navManage" hidden><span class="ic">⚙️</span>จัดการ</button>
   <button data-v="admin" id="navAdmin" hidden><span class="ic">🏢</span>ลูกค้า</button>
 </nav>
@@ -285,7 +320,7 @@ const firebaseConfig = {
   messagingSenderId: "381474069339",
   appId: "1:381474069339:web:7e284e17eb59e25559587e"
 };
-const APP_VERSION = "ticcfloop-v1";
+const APP_VERSION = "ticcfloop-v2";
 
 const fbApp = firebase.initializeApp(firebaseConfig, "ticcfloop");
 const auth = fbApp.auth(), db = fbApp.firestore();
@@ -308,12 +343,72 @@ function tStr(iso){ return iso ? new Date(iso).toLocaleString('th-TH',{timeZone:
 // ---------- state ----------
 let tenantUnsub = [];
 const S = { user:null, email:'', isSuper:false, member:null, tenantId:null, tenant:null, tenants:[],
-  sites:[], members:[], filter:'all', q:'', picking:false, unsub:[] };
+  sites:[], members:[], events:[], filter:'all', q:'', picking:false, unsub:[],
+  mode: (() => { try { return localStorage.getItem('tf_mode') || 'flood'; } catch(e) { return 'flood'; } })(),
+  evKind:'all', evSite:'', evPhoto:false };
 const role = () => S.isSuper ? 'super' : (S.member?.role || 'viewer');
 const canEdit = () => S.isSuper || ['owner','admin'].includes(role());
 const isOwner = () => S.isSuper || role() === 'owner';
 const lvOf = s => (!s.risk || s.risk.noData) ? -1 : (s.risk.level ?? 0);
-const colorOf = s => { const l = lvOf(s); return l < 0 ? ND_HEX : LV_HEX[l]; };
+const hexOf = l => l < 0 ? ND_HEX : LV_HEX[l];
+const colorOf = s => hexOf(lvOf(s));
+const hoursAgo = iso => iso ? (Date.now() - new Date(iso).getTime()) / 36e5 : 1e9;
+
+// ---------- พยากรณ์ (Google Weather ใน sites.gweather — ใช้ได้ถ้าใหม่ไม่เกิน 2 ชม.) ----------
+const gw = s => (s.gweather?.updatedAt && hoursAgo(s.gweather.updatedAt) <= 2) ? s.gweather : null;
+// เกณฑ์เดียวกับ n8n Compute Risk
+const rainPts = mm => mm>=150?65 : mm>=120?55 : mm>=90?45 : mm>=60?30 : mm>=35?15 : mm>=10?5 : 0;
+const wlPts = p => p>=100?35 : p>=90?25 : p>=80?15 : p>=70?6 : 0;
+const roadPts = cm => cm>=30?20 : cm>=20?15 : cm>=10?8 : 0;
+const repPts = n => Math.min(30, n*8);
+const toLevel = sc => sc>=75?3 : sc>=50?2 : sc>=25?1 : 0;
+function forecastOf(s){
+  const g = gw(s); if (!g || g.rain3h == null) return null;
+  const r = s.risk && !s.risk.noData ? s.risk : null;
+  const total = Math.round(((r?.rain24h ?? 0) + g.rain3h) * 10) / 10;
+  const score = Math.min(100, rainPts(total) + wlPts(r?.wlPercent || 0) + roadPts(r?.road?.maxCm || 0) + repPts(r ? (r.traffyCount||0) + (r.longdoCount||0) : 0));
+  const level = toLevel(score);
+  return {rain3h: g.rain3h, prob: g.probMax, total, score, level, up: level > lvOf(s)};
+}
+const MODES = {
+  flood:    {ic:'🌊', name:'น้ำท่วมตอนนี้', names: LV_NAME},
+  forecast: {ic:'⏳', name:'คาดการณ์ 3 ชม.', names: LV_NAME},
+  storm:    {ic:'⛈️', name:'พายุ/ฟ้าผ่า 3 ชม.', names: ['ไม่มีพายุ','เฝ้าระวัง','พายุฝนฟ้าคะนอง','พายุรุนแรง']},
+  heat:     {ic:'🌡️', name:'ความร้อน 24 ชม.', names: ['ปกติ','ร้อน','ร้อนมาก','ร้อนจัด']}
+};
+function modeLevel(s, m){
+  m = m || S.mode;
+  if (m === 'flood') return lvOf(s);
+  if (m === 'forecast') return forecastOf(s)?.level ?? -1;
+  const g = gw(s);
+  if (m === 'storm') return g?.storm?.level ?? -1;
+  if (m === 'heat') return g?.heat?.level ?? -1;
+  return -1;
+}
+
+// ---------- AI สรุปน้ำท่วม (sites.aiFlood — แสดงไม่เกิน 12 ชม.) ----------
+const AI_ST = {flooding:['ยังท่วม',2], receding:['น้ำเริ่มลด',1], dry:['น้ำลดแล้ว',0], unclear:['ข้อมูลไม่ชัดเจน',1]};
+const AI_TR = {rising:'น้ำมีแนวโน้มสูงขึ้น', steady:'ระดับน้ำทรงตัว', falling:'น้ำกำลังลด'};
+const AI_AC = {normal:'รถทั่วไปเข้าได้', high_vehicle:'ควรใช้รถยกสูง', blocked:'รถเข้าไม่ได้'};
+// Firestore เก็บชื่อโมเดลเต็ม — แอปแสดงเป็น JUPETOR model
+const modelLabel = m => m ? String(m).replace(/^claude-[a-z]+-/i, 'JUPETOR model ') : 'JUPETOR model';
+function aiFloodOf(s){
+  const a = s.aiFlood; if (!a || hoursAgo(a.updatedAt) > 12) return null;
+  const [name, lv0] = AI_ST[a.status] || AI_ST.unclear;
+  const level = a.status === 'flooding' && (a.trend === 'rising' || (a.depthMax||0) >= 30) ? 3 : lv0;
+  return {...a, name, level};
+}
+
+// ---------- เหตุการณ์ใกล้ site (tenants/{t}/events) ----------
+const EVK = {flood:{ic:'🌊', name:'น้ำท่วม'}, wire:{ic:'⚡', name:'สายไฟ/ไฟฟ้า'}, fire:{ic:'🔥', name:'ไฟไหม้'}, quake:{ic:'〰️', name:'แผ่นดินไหว'}};
+const recentEvents = () => S.events.filter(e => hoursAgo(e.at) <= 24);
+const eventsFor = s => recentEvents().filter(e => e.siteId === s.id || (e.nearby || []).some(x => x.id === s.id));
+function evHtml(e, withSite){
+  const k = EVK[e.kind] || {ic:'•'};
+  const img = e.photo ? `<a href="${esc(e.photo)}" target="_blank" rel="noopener"><img src="${esc(e.photo)}" loading="lazy" referrerpolicy="no-referrer" alt="รูปจากผู้แจ้ง" onerror="this.parentNode.remove()"></a>` : '';
+  return `<div class="ev"><span class="ic">${k.ic}</span><div class="tx">${esc(e.title)}
+    <small>${withSite ? `ใกล้ ${esc(e.siteName)} · ` : ''}ห่าง ${e.distKm} กม. · ${esc(e.src)} · ${ago(e.at)}${e.state ? ' · ' + esc(e.state) : ''}</small></div>${img}</div>`;
+}
 
 // ---------- auth ----------
 $('btnLogin').onclick = async () => {
@@ -367,7 +462,7 @@ auth.onAuthStateChanged(async user => {
 // ---------- tenant ----------
 function openTenant(tid){
   tenantUnsub.forEach(f => f()); tenantUnsub = [];
-  S.tenantId = tid; S.sites = []; S.members = []; firstFit = true;
+  S.tenantId = tid; S.sites = []; S.members = []; S.events = []; firstFit = true;
   try { localStorage.setItem('tf_tenant', tid); } catch(e){}
   $('tenantPick').value = tid;
   tenantUnsub.push(db.doc('tenants/' + tid).onSnapshot(d => {
@@ -381,6 +476,10 @@ function openTenant(tid){
     S.sites = snap.docs.map(d => ({id:d.id, ...d.data()}));
     renderAll();
   }, err => { if (err.code === 'permission-denied') toast('ไม่มีสิทธิ์อ่าน site ของบริษัทนี้'); else toast('โหลด site ไม่ได้: ' + err.code); }));
+  tenantUnsub.push(db.collection(`tenants/${tid}/events`).where('at', '>=', new Date(Date.now() - 24*36e5).toISOString())
+    .orderBy('at', 'desc').limit(400).onSnapshot(snap => {
+      S.events = snap.docs.map(d => ({id:d.id, ...d.data()})); renderEvents();
+    }, err => { if (err.code !== 'permission-denied') console.warn('events', err); }));
   if (isOwner()) {
     tenantUnsub.push(db.collection('members').where('tenantId', '==', tid).onSnapshot(snap => {
       S.members = snap.docs.map(d => ({id:d.id, ...d.data()})); renderMembers();
@@ -414,17 +513,23 @@ function renderMap(){
   const pts = [];
   for (const s of S.sites) {
     if (typeof s.lat !== 'number' || typeof s.lng !== 'number') continue;
-    const l = lvOf(s), size = l >= 2 ? 22 : 16;
-    const icon = L.divIcon({className:'', html:`<div class="pin" style="width:${size}px;height:${size}px;background:${colorOf(s)}"></div>`, iconSize:[size,size], iconAnchor:[size/2,size/2]});
+    const l = modeLevel(s), size = l >= 2 ? 22 : 16;
+    const icon = L.divIcon({className:'', html:`<div class="pin" style="width:${size}px;height:${size}px;background:${hexOf(l)}"></div>`, iconSize:[size,size], iconAnchor:[size/2,size/2]});
     L.marker([s.lat, s.lng], {icon, zIndexOffset: (l+1)*100, title: s.name}).on('click', () => openSheet(s.id)).addTo(layer);
     pts.push([s.lat, s.lng]);
   }
   if (firstFit && pts.length) { firstFit = false; map.fitBounds(pts, {padding:[40,40], maxZoom:13}); }
-  const cnt = [0,0,0,0], nd = S.sites.filter(s => lvOf(s) < 0).length;
-  S.sites.forEach(s => { const l = lvOf(s); if (l >= 0) cnt[l]++; });
-  $('legend').innerHTML = cnt.map((n,i) => `<span class="chip"><span class="dot" style="background:${LV_HEX[i]}"></span>${LV_NAME[i]} <b>${n}</b></span>`).join('')
+  const cnt = [0,0,0,0], nd = S.sites.filter(s => modeLevel(s) < 0).length, names = MODES[S.mode].names;
+  S.sites.forEach(s => { const l = modeLevel(s); if (l >= 0) cnt[l]++; });
+  $('modes').innerHTML = Object.entries(MODES).map(([k,m]) => `<button data-m="${k}" class="${k === S.mode ? 'on' : ''}">${m.ic} ${m.name}</button>`).join('');
+  $('legend').innerHTML = cnt.map((n,i) => `<span class="chip"><span class="dot" style="background:${LV_HEX[i]}"></span>${names[i]} <b>${n}</b></span>`).join('')
     + `<span class="chip"><span class="dot" style="background:${ND_HEX}"></span>ไม่มีข้อมูล <b>${nd}</b></span>`;
 }
+$('modes').onclick = e => {
+  const b = e.target.closest('button[data-m]'); if (!b) return;
+  S.mode = b.dataset.m; try { localStorage.setItem('tf_mode', S.mode); } catch(x){}
+  renderMap();
+};
 map.on('click', e => {
   if (!S.picking) return;
   S.picking = false; $('pickbar').hidden = true;
@@ -445,6 +550,7 @@ function renderList(){
   let arr = S.sites.filter(s => !q || (s.name||'').toLowerCase().includes(q));
   if (S.filter === 'risk') arr = arr.filter(s => lvOf(s) >= 1);
   if (S.filter === 'nd') arr = arr.filter(s => lvOf(s) < 0);
+  if (S.filter === 'fc') arr = arr.filter(s => (forecastOf(s)?.level ?? -1) >= 2);
   arr.sort((a,b) => (b.risk?.score ?? -1) - (a.risk?.score ?? -1) || (a.name||'').localeCompare(b.name||'', 'th'));
   if (!S.sites.length) {
     $('list').innerHTML = `<div class="empty">ยังไม่มี site ในบัญชีนี้${canEdit() ? '<br><button class="btn pri" style="margin-top:10px" onclick="showView(\'manage\')">เพิ่ม site แรก</button>' : '<br>ให้ผู้ดูแลของบริษัทเพิ่ม site'}</div>`;
@@ -456,7 +562,9 @@ function renderList(){
     const meta = [TYPE_NAME[s.type] || 'อื่น ๆ',
       r.rain24h != null ? `ฝน ${r.rain24h} มม.` : null,
       r.wlPercent != null ? `คลอง ${r.wlPercent}%` : null,
-      (r.traffyCount||0) + (r.longdoCount||0) ? `แจ้งท่วม ${(r.traffyCount||0)+(r.longdoCount||0)} จุด` : null].filter(Boolean).join(' · ');
+      (r.traffyCount||0) + (r.longdoCount||0) ? `แจ้งท่วม ${(r.traffyCount||0)+(r.longdoCount||0)} จุด` : null,
+      forecastOf(s)?.up ? `⏳ อีก 3 ชม. ${LV_NAME[forecastOf(s).level]}` : null,
+      aiFloodOf(s) ? `🤖 ${aiFloodOf(s).name}` : null].filter(Boolean).join(' · ');
     return `<button class="row" onclick="openSheet('${esc(s.id)}')">
       <div class="gauge"><i style="height:${l<0?0:Math.max(6,sc)}%;background:${colorOf(s)}"></i></div>
       <div class="body"><h3>${esc(s.name)}</h3>
@@ -490,8 +598,33 @@ function openSheet(id){
       <dt>ประเมินล่าสุด</dt><dd>${tStr(r.updatedAt)}</dd></dl>`;
     if (r.reports?.length) h += `<div class="box"><b>รายงานเหตุใกล้ site</b><br>${r.reports.map(x => `• ${esc(x.title)} <small>(${esc(x.src)}, ${x.distKm} กม.)</small>`).join('<br>')}</div>`;
   }
+  // พยากรณ์ 3 ชม. / พายุ / ความร้อน
+  const g = gw(s), f = forecastOf(s);
+  if (g) {
+    const card = (ic, title, lv, names, body) => `<div><small>${ic} ${title}</small><b style="color:${hexOf(lv)}">${names[lv]}</b>${body}</div>`;
+    h += `<div class="wx">
+      ${f ? card('⏳','คาดการณ์น้ำท่วม 3 ชม.', f.level, LV_NAME, `ฝนจะตกอีก ${f.rain3h} มม.${f.prob != null ? ` · โอกาส ${f.prob}%` : ''}<br>คะแนน ${f.score}${f.up ? ' · ⚠️ สูงขึ้นจากตอนนี้' : ''}`) : ''}
+      ${g.storm ? card('⛈️','พายุ/ฟ้าผ่า 3 ชม.', g.storm.level, MODES.storm.names, `ลมกระโชก ${g.storm.gustMax} กม./ชม.<br>โอกาสฟ้าคะนอง ${g.storm.thunderMax ?? '-'}%`) : ''}
+      ${g.heat ? card('🌡️','ความร้อน 24 ชม.', g.heat.level, MODES.heat.names, `สูงสุด ${g.heat.tmax} °C · ต่ำสุด ${g.heat.tmin} °C${g.heat.heatIndexMax != null ? `<br>รู้สึกเหมือน ${g.heat.heatIndexMax} °C` : ''}`) : ''}
+    </div><p class="hint" style="margin-top:0">พยากรณ์จาก Google Weather · อัปเดต ${ago(g.updatedAt)}</p>`;
+  } else if (s.gweather) {
+    h += `<div class="box stale">⚠️ ข้อมูลพยากรณ์เก่ากว่า 2 ชม. (อัปเดต ${ago(s.gweather.updatedAt)})</div>`;
+  }
+  // AI สรุปน้ำท่วม
+  const ai = aiFloodOf(s);
+  if (ai) {
+    const depth = ai.depthMax != null ? ` · ลึกราว ${ai.depthMin != null && ai.depthMin !== ai.depthMax ? ai.depthMin + '–' : ''}${ai.depthMax} ซม.` : '';
+    h += `<div class="box ai" style="border-left-color:${hexOf(ai.level)}"><b>🤖 สถานการณ์น้ำรอบ site: ${ai.name}</b>${depth}
+      <br>${[AI_TR[ai.trend], AI_AC[ai.access]].filter(Boolean).join(' · ')}
+      ${ai.summary ? `<p>${esc(ai.summary)}</p>` : ''}
+      <small>จากรายงาน ${ai.reports} เรื่อง · ${esc(modelLabel(ai.model))} · ${ago(ai.updatedAt)} · AI อาจสรุปผิดพลาด</small></div>`;
+  }
+  // เหตุการณ์ใกล้ site
+  const evs = eventsFor(s);
+  if (evs.length) h += `<div class="box" style="background:#fff;border:1px solid var(--line)"><b>🚨 เหตุการณ์ใกล้ site (24 ชม.)</b>${evs.slice(0, 8).map(e => evHtml(e, false)).join('')}
+    ${evs.length > 8 ? `<button class="btn sm" style="margin-top:6px" onclick="S.evSite='${esc(s.id)}';closeSheet();showView('events');renderEvents()">ดูทั้งหมด ${evs.length} เรื่อง</button>` : ''}</div>`;
   if (s.note) h += `<div class="box">📝 ${esc(s.note)}</div>`;
-  h += `<p class="hint">ประเมินจากข้อมูลสาธารณะ (ฝน ระดับน้ำคลอง เซนเซอร์ถนน และการแจ้งเหตุ) ไม่ใช่การวัดที่ site โดยตรง ควรให้ผู้รับผิดชอบหน้างานยืนยัน</p>`;
+  h += `<p class="hint">ประเมินจากข้อมูลสาธารณะ (ฝน ระดับน้ำคลอง เซนเซอร์ถนน การแจ้งเหตุ และพยากรณ์อากาศ) ไม่ใช่การวัดที่ site โดยตรง ควรให้ผู้รับผิดชอบหน้างานยืนยัน</p>`;
   h += `<div class="actions"><a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}">นำทาง</a>
     <button class="btn" onclick="zoomTo('${esc(s.id)}')">ดูบนแผนที่</button>
     ${canEdit() ? `<button class="btn" onclick="editSite('${esc(s.id)}')">แก้ไข</button>` : ''}</div>`;
@@ -644,16 +777,36 @@ async function setMax(id){
   try { await db.doc('tenants/' + id).update({maxSites:v, updatedAt:TS(), updatedBy:S.email}); } catch(e) { toast('แก้ไม่ได้: ' + e.code); }
 }
 
+// ---------- เหตุการณ์ ----------
+function renderEvents(){
+  const sel = $('evSite'), counts = {};
+  recentEvents().forEach(e => counts[e.siteId] = (counts[e.siteId] || 0) + 1);
+  const opts = S.sites.filter(s => counts[s.id]).sort((a,b) => counts[b.id] - counts[a.id]);
+  sel.innerHTML = `<option value="">ทุก site</option>` + opts.map(s => `<option value="${esc(s.id)}">${esc(s.name)} (${counts[s.id]})</option>`).join('');
+  sel.value = S.evSite && counts[S.evSite] ? S.evSite : '';
+  let arr = recentEvents();
+  if (S.evKind !== 'all') arr = arr.filter(e => e.kind === S.evKind);
+  if (sel.value) arr = arr.filter(e => e.siteId === sel.value || (e.nearby || []).some(x => x.id === sel.value));
+  if (S.evPhoto) arr = arr.filter(e => e.photo);
+  $('evList').innerHTML = arr.length ? arr.slice(0, 200).map(e => evHtml(e, true)).join('')
+    : `<div class="hint" style="margin:0">${S.events.length ? 'ไม่มีเหตุการณ์ตามเงื่อนไขนี้' : 'ยังไม่มีเหตุการณ์ใกล้ site ใน 24 ชม. ที่ผ่านมา'}</div>`;
+}
+document.querySelectorAll('#evk button').forEach(b => b.onclick = () => {
+  S.evKind = b.dataset.k; document.querySelectorAll('#evk button').forEach(x => x.classList.toggle('on', x === b)); renderEvents();
+});
+$('evSite').onchange = e => { S.evSite = e.target.value; renderEvents(); };
+$('evPhoto').onchange = e => { S.evPhoto = e.target.checked; renderEvents(); };
+
 // ---------- render ----------
 function renderAll(){
-  renderMap(); renderList(); renderSiteLines();
+  renderMap(); renderList(); renderSiteLines(); renderEvents();
   const last = S.sites.map(s => s.risk?.updatedAt).filter(Boolean).sort().pop();
   $('upd').innerHTML = last ? `อัปเดต<br>${ago(last).replace('ที่แล้ว','')}` : '';
 }
 setInterval(() => { if (S.sites.length) renderAll(); }, 60000);
 
 // deep link ?tab=list
-const tab = new URLSearchParams(location.search).get('tab'); if (['list','manage'].includes(tab)) showView(tab);
+const tab = new URLSearchParams(location.search).get('tab'); if (['list','events','manage'].includes(tab)) showView(tab);
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
