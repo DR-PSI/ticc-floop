@@ -320,7 +320,7 @@ const firebaseConfig = {
   messagingSenderId: "381474069339",
   appId: "1:381474069339:web:7e284e17eb59e25559587e"
 };
-const APP_VERSION = "ticcfloop-v4";
+const APP_VERSION = "ticcfloop-v5";
 
 const fbApp = firebase.initializeApp(firebaseConfig, "ticcfloop");
 const auth = fbApp.auth(), db = fbApp.firestore();
@@ -393,7 +393,7 @@ const AI_AC = {normal:'รถทั่วไปเข้าได้', high_vehi
 // Firestore เก็บชื่อโมเดลเต็ม — แอปแสดงเป็น JUPETOR model
 const modelLabel = m => m ? String(m).replace(/^claude-[a-z]+-/i, 'JUPETOR model ') : 'JUPETOR model';
 function aiFloodOf(s){
-  const a = s.aiFlood; if (!a || hoursAgo(a.updatedAt) > 12) return null;
+  const a = s.aiFlood; if (!a || hoursAgo(a.updatedAt) > 13) return null;   // AI สรุปทุก 12 ชม. (06:00 / 18:00) + เผื่อ 1 ชม.
   const [name, lv0] = AI_ST[a.status] || AI_ST.unclear;
   const level = a.status === 'flooding' && (a.trend === 'rising' || (a.depthMax||0) >= 30) ? 3 : lv0;
   return {...a, name, level};
@@ -627,7 +627,7 @@ function openSheet(id){
     h += `<div class="box ai" style="border-left-color:${hexOf(ai.level)}"><b>🤖 สถานการณ์น้ำรอบ site: ${ai.name}</b>${depth}
       <br>${[AI_TR[ai.trend], AI_AC[ai.access]].filter(Boolean).join(' · ')}
       ${ai.summary ? `<p>${esc(ai.summary)}</p>` : ''}
-      <small>จากรายงาน ${ai.reports} เรื่อง · ${esc(modelLabel(ai.model))} · ${ago(ai.updatedAt)} · AI อาจสรุปผิดพลาด</small></div>`;
+      <small>จากรายงาน ${ai.reports} เรื่อง · ${esc(modelLabel(ai.model))} · สรุปเมื่อ ${tStr(ai.updatedAt)} (สรุปใหม่ทุก 06:00 / 18:00) · AI อาจสรุปผิดพลาด</small></div>`;
   }
   // เหตุการณ์ใกล้ site
   const evs = eventsFor(s);
