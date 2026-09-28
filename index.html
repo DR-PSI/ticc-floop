@@ -320,7 +320,7 @@ const firebaseConfig = {
   messagingSenderId: "381474069339",
   appId: "1:381474069339:web:7e284e17eb59e25559587e"
 };
-const APP_VERSION = "ticcfloop-v2";
+const APP_VERSION = "ticcfloop-v4";
 
 const fbApp = firebase.initializeApp(firebaseConfig, "ticcfloop");
 const auth = fbApp.auth(), db = fbApp.firestore();
@@ -403,8 +403,18 @@ function aiFloodOf(s){
 const EVK = {flood:{ic:'🌊', name:'น้ำท่วม'}, wire:{ic:'⚡', name:'สายไฟ/ไฟฟ้า'}, fire:{ic:'🔥', name:'ไฟไหม้'}, quake:{ic:'〰️', name:'แผ่นดินไหว'}};
 const recentEvents = () => S.events.filter(e => hoursAgo(e.at) <= 24);
 const eventsFor = s => recentEvents().filter(e => e.siteId === s.id || (e.nearby || []).some(x => x.id === s.id));
+// รูปแทนของ Traffy (โลโก้ศูนย์ กทม. 1555 ฯลฯ) — ไม่แสดง
+function realPhoto(e){
+  const u = e.photo || ''; if (!u) return '';
+  if (u.includes('da2125e781282589d482070c3dba1726aa16a4a7')) return '';
+  if (e.src === 'Traffy' && /1555|^\s*ปัญหา\s*[:：]/.test(e.title || '')) return '';   // เรื่องจากสายด่วน 1555 = รูปโลโก้แทน
+  const m = u.match(/\/attachment\/(\d{4})-(\d{2})\//);
+  if (m && new Date(e.at).getTime() - Date.UTC(+m[1], +m[2] - 1, 1) > 62*864e5) return '';
+  return u;
+}
 function evHtml(e, withSite){
   const k = EVK[e.kind] || {ic:'•'};
+  e = {...e, photo: realPhoto(e)};
   const img = e.photo ? `<a href="${esc(e.photo)}" target="_blank" rel="noopener"><img src="${esc(e.photo)}" loading="lazy" referrerpolicy="no-referrer" alt="รูปจากผู้แจ้ง" onerror="this.parentNode.remove()"></a>` : '';
   return `<div class="ev"><span class="ic">${k.ic}</span><div class="tx">${esc(e.title)}
     <small>${withSite ? `ใกล้ ${esc(e.siteName)} · ` : ''}ห่าง ${e.distKm} กม. · ${esc(e.src)} · ${ago(e.at)}${e.state ? ' · ' + esc(e.state) : ''}</small></div>${img}</div>`;
@@ -787,7 +797,7 @@ function renderEvents(){
   let arr = recentEvents();
   if (S.evKind !== 'all') arr = arr.filter(e => e.kind === S.evKind);
   if (sel.value) arr = arr.filter(e => e.siteId === sel.value || (e.nearby || []).some(x => x.id === sel.value));
-  if (S.evPhoto) arr = arr.filter(e => e.photo);
+  if (S.evPhoto) arr = arr.filter(e => realPhoto(e));
   $('evList').innerHTML = arr.length ? arr.slice(0, 200).map(e => evHtml(e, true)).join('')
     : `<div class="hint" style="margin:0">${S.events.length ? 'ไม่มีเหตุการณ์ตามเงื่อนไขนี้' : 'ยังไม่มีเหตุการณ์ใกล้ site ใน 24 ชม. ที่ผ่านมา'}</div>`;
 }
