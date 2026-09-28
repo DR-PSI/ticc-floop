@@ -321,7 +321,7 @@ const firebaseConfig = {
   messagingSenderId: "381474069339",
   appId: "1:381474069339:web:7e284e17eb59e25559587e"
 };
-const APP_VERSION = "ticcfloop-v7";
+const APP_VERSION = "ticcfloop-v8";
 
 const fbApp = firebase.initializeApp(firebaseConfig, "ticcfloop");
 const auth = fbApp.auth(), db = fbApp.firestore();
@@ -339,6 +339,14 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 function toast(msg, ms=2600){ const t=$('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(toast._h); toast._h=setTimeout(()=>t.style.display='none', ms); }
 function ago(iso){ if(!iso) return '-'; const m=Math.round((Date.now()-new Date(iso).getTime())/60000);
   if(m<1) return 'เมื่อสักครู่'; if(m<60) return m+' นาทีที่แล้ว'; if(m<1440) return Math.round(m/60)+' ชม.ที่แล้ว'; return Math.round(m/1440)+' วันที่แล้ว'; }
+// เวลา HH:MM น. (เวลาไทย) — ถ้าไม่ใช่วันนี้ใส่วันที่ด้วย
+function hm(iso){
+  if (!iso) return '-';
+  const d = new Date(iso), o = {timeZone:'Asia/Bangkok'};
+  const t = d.toLocaleTimeString('th-TH', {...o, hour:'2-digit', minute:'2-digit'}) + ' น.';
+  const same = d.toLocaleDateString('th-TH', o) === new Date().toLocaleDateString('th-TH', o);
+  return same ? t : d.toLocaleDateString('th-TH', {...o, day:'numeric', month:'short'}) + ' ' + t;
+}
 function tStr(iso){ return iso ? new Date(iso).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'short',timeStyle:'short'})+' น.' : '-'; }
 
 // ---------- state ----------
@@ -608,7 +616,7 @@ function openSheet(id){
     h += `<div class="box">รอประเมินรอบแรก ระบบคำนวณความเสี่ยงทุก 15 นาที</div>`;
   } else {
     h += `<div class="big" style="background:${colorOf(s)}"><div class="n">${l<0?'–':r.score}</div>
-      <div><div class="t">${l<0?'ไม่มีข้อมูลรอบ site นี้':LV_NAME[l]}</div><small>คะแนนความเสี่ยง 0–100 · อัปเดต ${ago(r.updatedAt)}</small></div></div>`;
+      <div><div class="t">${l<0?'ไม่มีข้อมูลรอบ site นี้':LV_NAME[l]}</div><small>คะแนนความเสี่ยง 0–100 · อัปเดต ${hm(r.updatedAt)} (${ago(r.updatedAt)})</small></div></div>`;
     if (stale) h += `<div class="box stale">⚠️ ข้อมูลเก่ากว่า ${STALE_MIN} นาที ระบบประมวลผลอาจหยุดชั่วคราว</div>`;
     const road = r.road;
     h += `<dl class="kv">
@@ -627,7 +635,7 @@ function openSheet(id){
       ${f ? card('⏳','คาดการณ์น้ำท่วม 3 ชม.', f.level, LV_NAME, `ฝนจะตกอีก ${f.rain3h} มม.${f.prob != null ? ` · โอกาส ${f.prob}%` : ''}<br>คะแนน ${f.score}${f.up ? ' · ⚠️ สูงขึ้นจากตอนนี้' : ''}`) : ''}
       ${g.storm ? card('⛈️','พายุ/ฟ้าผ่า 3 ชม.', g.storm.level, MODES.storm.names, `ลมกระโชก ${g.storm.gustMax} กม./ชม.<br>โอกาสฟ้าคะนอง ${g.storm.thunderMax ?? '-'}%`) : ''}
       ${g.heat ? card('🌡️','ความร้อน 24 ชม.', g.heat.level, MODES.heat.names, `สูงสุด ${g.heat.tmax} °C · ต่ำสุด ${g.heat.tmin} °C${g.heat.heatIndexMax != null ? `<br>รู้สึกเหมือน ${g.heat.heatIndexMax} °C` : ''}`) : ''}
-    </div><p class="hint" style="margin-top:0">พยากรณ์จาก Google Weather · อัปเดต ${ago(g.updatedAt)}</p>`;
+    </div><p class="hint" style="margin-top:0">พยากรณ์จาก Google Weather · อัปเดต ${hm(g.updatedAt)}</p>`;
   } else if (s.gweather) {
     h += `<div class="box stale">⚠️ ข้อมูลพยากรณ์เก่ากว่า 2 ชม. (อัปเดต ${ago(s.gweather.updatedAt)})</div>`;
   }
@@ -822,7 +830,8 @@ $('evPhoto').onchange = e => { S.evPhoto = e.target.checked; renderEvents(); };
 function renderAll(){
   renderMap(); renderList(); renderSiteLines(); renderEvents();
   const last = S.sites.map(s => s.risk?.updatedAt).filter(Boolean).sort().pop();
-  $('upd').innerHTML = last ? `อัปเดต<br>${ago(last).replace('ที่แล้ว','')}` : '';
+  $('upd').innerHTML = last ? `อัปเดต<br>${hm(last)}` : '';
+  $('upd').title = last ? `ประเมินล่าสุด ${tStr(last)} (${ago(last)})` : '';
 }
 setInterval(() => { if (S.sites.length) renderAll(); }, 60000);
 
