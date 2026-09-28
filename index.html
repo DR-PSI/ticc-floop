@@ -133,6 +133,7 @@ textarea.inp{min-height:110px;font-size:13px}
 #toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--text);color:#fff;padding:9px 16px;border-radius:10px;font-size:14px;z-index:3000;display:none;max-width:90vw}
 .leaflet-container{font-family:inherit}
 .pin{border-radius:50%;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.flag{display:block;overflow:visible;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35));cursor:pointer}
 .wx{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:6px}
 .wx>div{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.45;color:var(--muted)}
 .wx small{display:block;color:var(--muted)}
@@ -320,7 +321,7 @@ const firebaseConfig = {
   messagingSenderId: "381474069339",
   appId: "1:381474069339:web:7e284e17eb59e25559587e"
 };
-const APP_VERSION = "ticcfloop-v5";
+const APP_VERSION = "ticcfloop-v7";
 
 const fbApp = firebase.initializeApp(firebaseConfig, "ticcfloop");
 const auth = fbApp.auth(), db = fbApp.firestore();
@@ -517,14 +518,24 @@ L.control.zoom({position:'bottomright'}).addTo(map);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
 const layer = L.layerGroup().addTo(map);
 let firstFit = true, draftMarker = null;
+// ธงปักตำแหน่ง site — สีตามระดับของโหมดที่เลือก · จุดยึดอยู่ที่โคนเสา
+function flagSvg(color, w, h){
+  // วงกลมสี = ตำแหน่ง site (จุดยึด) · ธงสีเดียวกันปักอยู่บนวงกลม
+  return `<svg class="flag" width="${w}" height="${h}" viewBox="0 0 30 46" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5.6" y="2" width="2.8" height="34" rx="1.4" fill="#0e2733"/>
+    <path d="M8.2 3.5 H28.5 L23 11 L28.5 18.5 H8.2 Z" fill="${color}" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+    <circle cx="7" cy="2.6" r="2.4" fill="#fff" stroke="#0e2733" stroke-width="1"/>
+    <circle cx="7" cy="38" r="6.5" fill="${color}" stroke="#fff" stroke-width="2.4"/>
+  </svg>`;
+}
 
 function renderMap(){
   layer.clearLayers();
   const pts = [];
   for (const s of S.sites) {
     if (typeof s.lat !== 'number' || typeof s.lng !== 'number') continue;
-    const l = modeLevel(s), size = l >= 2 ? 22 : 16;
-    const icon = L.divIcon({className:'', html:`<div class="pin" style="width:${size}px;height:${size}px;background:${hexOf(l)}"></div>`, iconSize:[size,size], iconAnchor:[size/2,size/2]});
+    const l = modeLevel(s), k = l >= 2 ? 1.5 : 1.2, w = Math.round(30*k), h = Math.round(46*k);   // เสี่ยงสูง/วิกฤต = ธงใหญ่ขึ้น
+    const icon = L.divIcon({className:'', html: flagSvg(hexOf(l), w, h), iconSize:[w,h], iconAnchor:[Math.round(7*k), Math.round(38*k)]});
     L.marker([s.lat, s.lng], {icon, zIndexOffset: (l+1)*100, title: s.name}).on('click', () => openSheet(s.id)).addTo(layer);
     pts.push([s.lat, s.lng]);
   }
