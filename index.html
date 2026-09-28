@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d3b52">
+<title>TiCC-Floop</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon-64.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TiCC-Floop">
+<meta name="description" content="เฝ้าระวังความเสี่ยงน้ำท่วมรอบโรงงาน คลังสินค้า และสาขาของคุณ ประเมินใหม่ทุก 15 นาที">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --ink:#0d3b52; --ink2:#15506d; --bg:#f2f6f8; --panel:#fff; --panel2:#eaf1f5; --line:#d3e0e7;
+  --text:#0e2733; --muted:#577282; --water:#0f7fb3;
+  --l0:#1f9d63; --l1:#d49b00; --l2:#e8660f; --l3:#d8283f; --nd:#9aabb5;
+  font-family:"IBM Plex Sans Thai",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text)}
+body{display:flex;flex-direction:column}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--water);outline-offset:2px}
+[hidden]{display:none!important}
+
+header{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;background:var(--ink);color:#fff}
+.brand{display:flex;align-items:center;gap:9px;min-width:0}
+.brand img{width:34px;height:34px;border-radius:9px;flex:none}
+.brand b{font-size:17px;letter-spacing:.2px;display:block;line-height:1.1}
+.brand span{font-size:12px;opacity:.8;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+header .sp{flex:1}
+header select{display:block;margin-top:2px;background:var(--ink2);border:1px solid #2d6a88;color:#fff;border-radius:7px;padding:2px 6px;font-size:12px;max-width:52vw}
+.upd{font-size:11px;opacity:.85;text-align:right;line-height:1.3;white-space:nowrap}
+.hbtn{background:transparent;border:1px solid #2d6a88;color:#fff;border-radius:8px;padding:5px 9px;font-size:12px}
+
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 13px}
+.btn.pri{background:var(--water);color:#fff;border-color:var(--water);font-weight:600}
+.btn.bad{background:#fff;color:var(--l3);border-color:#f0c2c9}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+main{flex:1;position:relative;overflow:hidden}
+.view{position:absolute;inset:0;overflow:auto;display:none}
+.view.on{display:block}
+#map{position:absolute;inset:0;background:#e5ecf0}
+.pad{padding:16px;max-width:780px;margin:0 auto}
+h2{font-size:17px;margin:22px 0 10px}
+h2:first-child{margin-top:4px}
+.hint{font-size:13px;color:var(--muted);margin:4px 0 10px;line-height:1.5}
+
+nav{display:flex;border-top:1px solid var(--line);background:var(--panel);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;background:none;border:0;padding:9px 4px 11px;color:var(--muted);font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button .ic{font-size:19px;line-height:1}
+nav button.on{color:var(--ink);font-weight:600}
+
+/* legend on map */
+.legend{position:absolute;z-index:500;left:10px;right:10px;top:10px;display:flex;gap:6px;overflow-x:auto;pointer-events:none}
+.legend .chip{pointer-events:auto}
+.chip{flex:none;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;box-shadow:0 1px 3px rgba(13,59,82,.12)}
+.chip b{font-weight:700}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.pickbar{position:absolute;z-index:600;left:10px;right:10px;bottom:12px;background:var(--ink);color:#fff;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:14px}
+.pickbar .sp{flex:1}
+
+/* list */
+.tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tools input{flex:1;min-width:160px;border:1px solid var(--line);border-radius:10px;padding:7px 11px;background:#fff}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.seg button{border:0;background:none;padding:6px 11px;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--ink);color:#fff}
+.row{display:flex;gap:12px;align-items:stretch;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px;width:100%;text-align:left}
+.gauge{width:14px;border-radius:5px;background:#e3ecf1;position:relative;overflow:hidden;flex:none;min-height:50px}
+.gauge i{position:absolute;left:0;right:0;bottom:0}
+.row .body{flex:1;min-width:0}
+.row h3{margin:0 0 3px;font-size:15.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .meta{font-size:13px;color:var(--muted)}
+.score{font-size:22px;font-weight:700;align-self:center;min-width:40px;text-align:right}
+.lvl{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px;color:#fff;vertical-align:1px}
+.empty{background:#fff;border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted);line-height:1.6}
+
+/* sheet */
+.sheet-bg{position:fixed;inset:0;background:rgba(13,39,51,.35);z-index:1099;display:none}
+.sheet-bg.on{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:1100;background:var(--panel);border-radius:18px 18px 0 0;box-shadow:0 -6px 24px rgba(13,39,51,.18);max-height:86vh;overflow:auto;transform:translateY(105%);transition:transform .22s ease;padding:16px 16px calc(18px + env(safe-area-inset-bottom,0px));max-width:680px;margin:0 auto}
+.sheet.on{transform:none}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+.sheet h3{margin:0;font-size:19px}
+.sheet .sub{color:var(--muted);font-size:13px;margin:2px 0 12px}
+.big{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;margin-bottom:12px;color:#fff}
+.big .n{font-size:34px;font-weight:700;line-height:1}
+.big .t{font-size:15px;font-weight:600}
+.big small{display:block;font-weight:400;opacity:.9;font-size:12px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:7px 12px;font-size:14px;margin-bottom:12px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.box{background:var(--panel2);border-radius:10px;padding:10px 12px;font-size:13.5px;margin-bottom:10px;line-height:1.55}
+.stale{color:var(--l2);font-size:12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.close{position:absolute;right:12px;top:10px;background:none;border:0;font-size:22px;color:var(--muted)}
+
+/* forms */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+label.f{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+label.f:first-child{margin-top:0}
+.inp{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff}
+textarea.inp{min-height:110px;font-size:13px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.line:first-of-type{border-top:0}
+.line .x{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.line small{color:var(--muted)}
+.tag{font-size:12px;border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--muted);white-space:nowrap}
+.tag.off{color:var(--l3);border-color:#f0c2c9}
+
+/* gate */
+#gate{position:fixed;inset:0;z-index:2000;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;padding:24px}
+#gate .in{max-width:380px;text-align:center}
+#gate img{width:84px;height:84px;border-radius:20px}
+#gate h1{font-size:28px;margin:14px 0 4px}
+#gate p{opacity:.85;line-height:1.6;margin:6px 0 20px}
+#gate .btn{background:#fff;color:var(--ink);border:0;font-weight:600;padding:11px 20px}
+#gate .foot{font-size:12px;opacity:.6;margin-top:26px}
+#toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--text);color:#fff;padding:9px 16px;border-radius:10px;font-size:14px;z-index:3000;display:none;max-width:90vw}
+.leaflet-container{font-family:inherit}
+.pin{border-radius:50%;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="in">
+    <img src="icon-192.png" alt="">
+    <h1>TiCC-Floop</h1>
+    <p id="gateMsg">เฝ้าระวังความเสี่ยงน้ำท่วมรอบโรงงาน คลังสินค้า และสาขาของคุณ ประเมินใหม่ทุก 15 นาที</p>
+    <button class="btn" id="btnLogin">เข้าสู่ระบบด้วย Google</button>
+    <div id="gateOut" hidden style="margin-top:12px"><button class="btn" id="btnLogout2">ออกจากระบบ</button></div>
+    <div class="foot">TiCC-Floop by Enertric Ltd.</div>
+  </div>
+</div>
+
+<header>
+  <div class="brand">
+    <img src="icon-192.png" alt="">
+    <div style="min-width:0"><b>TiCC-Floop</b><span id="tenantName">-</span><select id="tenantPick" hidden aria-label="เลือกลูกค้า"></select></div>
+  </div>
+  <div class="sp"></div>
+  <div class="upd" id="upd"></div>
+  <button class="hbtn" id="btnLogout">ออก</button>
+</header>
+
+<main>
+  <section class="view on" id="v-map">
+    <div id="map"></div>
+    <div class="legend" id="legend"></div>
+    <div class="pickbar" id="pickbar" hidden>
+      <span>แตะแผนที่ตรงตำแหน่ง site</span><span class="sp"></span>
+      <button class="btn sm" id="pickCancel">ยกเลิก</button>
+    </div>
+  </section>
+
+  <section class="view" id="v-list">
+    <div class="pad">
+      <div class="tools">
+        <input id="q" type="search" placeholder="ค้นหาชื่อ site">
+        <div class="seg" id="flt">
+          <button data-f="all" class="on">ทั้งหมด</button>
+          <button data-f="risk">เฝ้าระวังขึ้นไป</button>
+          <button data-f="nd">ไม่มีข้อมูล</button>
+        </div>
+      </div>
+      <div id="list"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-manage">
+    <div class="pad">
+      <h2>เพิ่มหรือแก้ไข site</h2>
+      <div class="card" id="siteForm">
+        <input type="hidden" id="fId">
+        <label class="f" for="fName">ชื่อ site</label>
+        <input class="inp" id="fName" maxlength="120" placeholder="เช่น โรงงานบางนา กม.19">
+        <label class="f" for="fType">ประเภท</label>
+        <select class="inp" id="fType">
+          <option value="factory">โรงงาน</option><option value="warehouse">คลังสินค้า</option>
+          <option value="branch">สาขา / สำนักงาน</option><option value="other">อื่น ๆ</option>
+        </select>
+        <label class="f" for="fPos">ตำแหน่ง (lat,lng หรือวางลิงก์ Google Maps)</label>
+        <div style="display:flex;gap:8px"><input class="inp" id="fPos" placeholder="13.6612, 100.6345"><button class="btn" id="btnPick" type="button">เลือกบนแผนที่</button></div>
+        <label class="f" for="fAddr">ที่อยู่ (ไม่บังคับ)</label>
+        <input class="inp" id="fAddr" maxlength="300">
+        <label class="f" for="fNote">หมายเหตุ (ไม่บังคับ)</label>
+        <input class="inp" id="fNote" maxlength="300" placeholder="เช่น ห้องไฟฟ้าอยู่ชั้นล่าง">
+        <div class="actions">
+          <button class="btn pri" id="btnSave">บันทึก site</button>
+          <button class="btn" id="btnClear" type="button">ล้างฟอร์ม</button>
+        </div>
+      </div>
+
+      <h2>นำเข้าหลาย site จาก CSV</h2>
+      <div class="card">
+        <p class="hint" style="margin-top:0">วางทีละบรรทัด: <b>ชื่อ, lat, lng, ประเภท, ที่อยู่</b> (ประเภท: factory / warehouse / branch / other — เว้นได้)</p>
+        <textarea class="inp" id="csv" placeholder="โรงงานบางนา,13.6612,100.6345,factory&#10;คลังลาดกระบัง,13.7231,100.7804,warehouse"></textarea>
+        <div class="actions"><button class="btn pri" id="btnImport">นำเข้า</button></div>
+      </div>
+
+      <h2 id="sitesTitle">site ทั้งหมด</h2>
+      <div class="card" id="siteLines"></div>
+
+      <div id="ownerBox" hidden>
+        <h2>ผู้ใช้งานของบริษัท</h2>
+        <div class="card">
+          <div id="memberLines"></div>
+          <div class="two" style="margin-top:10px">
+            <input class="inp" id="mEmail" type="email" placeholder="อีเมล Google ของผู้ใช้">
+            <select class="inp" id="mRole">
+              <option value="viewer">ผู้ดู — ดูอย่างเดียว</option>
+              <option value="admin">ผู้ดูแล — แก้ไข site ได้</option>
+              <option value="owner">เจ้าของบัญชี — จัดการผู้ใช้ได้</option>
+            </select>
+          </div>
+          <div class="actions"><button class="btn pri" id="btnAddMember">เพิ่มผู้ใช้</button></div>
+          <p class="hint">ผู้ใช้เข้าระบบด้วยบัญชี Google ของอีเมลนี้ได้ทันที หนึ่งอีเมลใช้ได้กับบริษัทเดียว</p>
+        </div>
+
+        <h2>แจ้งเตือน LINE</h2>
+        <div class="card">
+          <label class="f" for="lineTo">LINE group ID ที่ต้องการรับแจ้งเตือน</label>
+          <input class="inp" id="lineTo" placeholder="C0123456789abcdef...">
+          <div class="actions"><button class="btn pri" id="btnLine">บันทึก</button></div>
+          <p class="hint">แจ้งเมื่อ site ใดขึ้นเป็น "เสี่ยงสูง" หรือ "วิกฤต" · เพิ่ม LINE bot ของ TiCC-Floop เข้ากลุ่มก่อน</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-admin">
+    <div class="pad">
+      <h2>เพิ่มลูกค้าใหม่</h2>
+      <div class="card">
+        <div class="two">
+          <div><label class="f" for="tId">รหัสลูกค้า (a-z 0-9 -)</label><input class="inp" id="tId" placeholder="acme-foods"></div>
+          <div><label class="f" for="tMax">จำนวน site สูงสุด</label><input class="inp" id="tMax" type="number" min="1" value="20"></div>
+        </div>
+        <label class="f" for="tName">ชื่อบริษัท</label>
+        <input class="inp" id="tName" placeholder="บริษัท เอแซดฟู้ดส์ จำกัด">
+        <label class="f" for="tOwner">อีเมลเจ้าของบัญชี (Google)</label>
+        <input class="inp" id="tOwner" type="email" placeholder="it@acme.co.th">
+        <div class="actions"><button class="btn pri" id="btnTenant">สร้างลูกค้า</button></div>
+      </div>
+      <h2>ลูกค้าทั้งหมด</h2>
+      <div class="card" id="tenantLines"></div>
+    </div>
+  </section>
+</main>
+
+<nav id="nav">
+  <button data-v="map" class="on"><span class="ic">🗺️</span>แผนที่</button>
+  <button data-v="list"><span class="ic">📋</span>รายการ site</button>
+  <button data-v="manage" id="navManage" hidden><span class="ic">⚙️</span>จัดการ</button>
+  <button data-v="admin" id="navAdmin" hidden><span class="ic">🏢</span>ลูกค้า</button>
+</nav>
+
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"><button class="close" id="sheetX" aria-label="ปิด">×</button><div id="sheetBody"></div></div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ===== ตั้งค่า Firebase (โปรเจกต์ใหม่ ticc-floop) — วาง config จาก Firebase Console ตรงนี้ =====
+const firebaseConfig = {
+  apiKey: "AIzaSyAs8_71ydCNxNLSEog358tjruQAuGHmd44",
+  authDomain: "ticc-floop.firebaseapp.com",
+  projectId: "ticc-floop",
+  storageBucket: "ticc-floop.firebasestorage.app",
+  messagingSenderId: "381474069339",
+  appId: "1:381474069339:web:7e284e17eb59e25559587e"
+};
+const APP_VERSION = "ticcfloop-v1";
+
+const fbApp = firebase.initializeApp(firebaseConfig, "ticcfloop");
+const auth = fbApp.auth(), db = fbApp.firestore();
+const TS = () => firebase.firestore.FieldValue.serverTimestamp();
+
+const LV_NAME = ['ปกติ','เฝ้าระวัง','เสี่ยงสูง','วิกฤต'];
+const LV_COLOR = ['var(--l0)','var(--l1)','var(--l2)','var(--l3)'];
+const LV_HEX = ['#1f9d63','#d49b00','#e8660f','#d8283f'], ND_HEX = '#9aabb5';
+const TYPE_NAME = {factory:'โรงงาน', warehouse:'คลังสินค้า', branch:'สาขา / สำนักงาน', other:'อื่น ๆ'};
+const ROLE_NAME = {owner:'เจ้าของบัญชี', admin:'ผู้ดูแล', viewer:'ผู้ดู'};
+const STALE_MIN = 45;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(msg, ms=2600){ const t=$('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(toast._h); toast._h=setTimeout(()=>t.style.display='none', ms); }
+function ago(iso){ if(!iso) return '-'; const m=Math.round((Date.now()-new Date(iso).getTime())/60000);
+  if(m<1) return 'เมื่อสักครู่'; if(m<60) return m+' นาทีที่แล้ว'; if(m<1440) return Math.round(m/60)+' ชม.ที่แล้ว'; return Math.round(m/1440)+' วันที่แล้ว'; }
+function tStr(iso){ return iso ? new Date(iso).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'short',timeStyle:'short'})+' น.' : '-'; }
+
+// ---------- state ----------
+let tenantUnsub = [];
+const S = { user:null, email:'', isSuper:false, member:null, tenantId:null, tenant:null, tenants:[],
+  sites:[], members:[], filter:'all', q:'', picking:false, unsub:[] };
+const role = () => S.isSuper ? 'super' : (S.member?.role || 'viewer');
+const canEdit = () => S.isSuper || ['owner','admin'].includes(role());
+const isOwner = () => S.isSuper || role() === 'owner';
+const lvOf = s => (!s.risk || s.risk.noData) ? -1 : (s.risk.level ?? 0);
+const colorOf = s => { const l = lvOf(s); return l < 0 ? ND_HEX : LV_HEX[l]; };
+
+// ---------- auth ----------
+$('btnLogin').onclick = async () => {
+  try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+  catch(e){ if(e.code !== 'auth/popup-closed-by-user') toast('เข้าสู่ระบบไม่สำเร็จ: ' + (e.code || e.message)); }
+};
+$('btnLogout').onclick = $('btnLogout2').onclick = () => auth.signOut();
+
+function gate(msg, showOut){
+  $('gate').hidden = false; $('gateMsg').innerHTML = msg;
+  $('btnLogin').hidden = !!showOut; $('gateOut').hidden = !showOut;
+}
+function stopAll(){ [...S.unsub, ...tenantUnsub].forEach(f => { try{f()}catch(e){} }); S.unsub = []; tenantUnsub = []; }
+
+auth.onAuthStateChanged(async user => {
+  stopAll(); S.user = user;
+  if (!user) { gate('เฝ้าระวังความเสี่ยงน้ำท่วมรอบโรงงาน คลังสินค้า และสาขาของคุณ ประเมินใหม่ทุก 15 นาที', false); return; }
+  S.email = (user.email || '').toLowerCase();
+  try {
+    const [sa, mb] = await Promise.all([
+      db.doc('superadmins/' + S.email).get().catch(() => null),
+      db.doc('members/' + S.email).get().catch(() => null)
+    ]);
+    S.isSuper = !!sa?.exists; S.member = mb?.exists ? mb.data() : null;
+  } catch(e) { S.isSuper = false; S.member = null; }
+
+  if (!S.isSuper && !S.member) {
+    gate(`บัญชี <b>${esc(S.email)}</b> ยังไม่ได้รับสิทธิ์ใช้งาน<br>ให้ผู้ดูแลของบริษัทเพิ่มอีเมลนี้ในเมนู "จัดการ" หรือติดต่อ Enertric`, true);
+    return;
+  }
+  $('gate').hidden = true; setTimeout(() => map.invalidateSize(), 50);
+  $('navManage').hidden = !canEdit();
+  $('navAdmin').hidden = !S.isSuper;
+  $('tenantPick').hidden = !S.isSuper; $('tenantName').hidden = S.isSuper;
+
+  if (S.isSuper) {
+    S.unsub.push(db.collection('tenants').onSnapshot(snap => {
+      S.tenants = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (a.name||a.id).localeCompare(b.name||b.id, 'th'));
+      renderTenantPick(); renderTenants();
+      if (!S.tenantId || !S.tenants.some(t => t.id === S.tenantId)) {
+        const saved = localStorage.getItem('tf_tenant');
+        const first = S.tenants.find(t => t.id === saved) || S.tenants[0];
+        if (first) openTenant(first.id); else { $('tenantName').textContent = 'ยังไม่มีลูกค้า'; showView('admin'); }
+      }
+    }, err => toast('อ่านรายชื่อลูกค้าไม่ได้: ' + err.code)));
+  } else {
+    openTenant(S.member.tenantId);
+  }
+});
+
+// ---------- tenant ----------
+function openTenant(tid){
+  tenantUnsub.forEach(f => f()); tenantUnsub = [];
+  S.tenantId = tid; S.sites = []; S.members = []; firstFit = true;
+  try { localStorage.setItem('tf_tenant', tid); } catch(e){}
+  $('tenantPick').value = tid;
+  tenantUnsub.push(db.doc('tenants/' + tid).onSnapshot(d => {
+    S.tenant = d.exists ? d.data() : {name: tid};
+    $('tenantName').textContent = (S.tenant.name || tid) + (S.tenant.active === false ? ' (ระงับ)' : '');
+    $('lineTo').value = S.tenant.lineTo || '';
+    if (S.tenant.active === false && !S.isSuper) gate('บัญชีบริษัทนี้ถูกระงับการใช้งานชั่วคราว<br>ติดต่อ Enertric เพื่อเปิดใช้งาน', true);
+    renderAll();
+  }, err => toast('อ่านข้อมูลบริษัทไม่ได้: ' + err.code)));
+  tenantUnsub.push(db.collection(`tenants/${tid}/sites`).onSnapshot(snap => {
+    S.sites = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    renderAll();
+  }, err => { if (err.code === 'permission-denied') toast('ไม่มีสิทธิ์อ่าน site ของบริษัทนี้'); else toast('โหลด site ไม่ได้: ' + err.code); }));
+  if (isOwner()) {
+    tenantUnsub.push(db.collection('members').where('tenantId', '==', tid).onSnapshot(snap => {
+      S.members = snap.docs.map(d => ({id:d.id, ...d.data()})); renderMembers();
+    }, err => toast('โหลดผู้ใช้ไม่ได้: ' + err.code)));
+  }
+  $('ownerBox').hidden = !isOwner();
+}
+function renderTenantPick(){
+  $('tenantPick').innerHTML = S.tenants.map(t => `<option value="${esc(t.id)}">${esc(t.name || t.id)}</option>`).join('');
+  if (S.tenantId) $('tenantPick').value = S.tenantId;
+}
+$('tenantPick').onchange = e => openTenant(e.target.value);
+
+// ---------- views ----------
+function showView(v){
+  document.querySelectorAll('.view').forEach(x => x.classList.toggle('on', x.id === 'v-' + v));
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  if (v === 'map') setTimeout(() => map.invalidateSize(), 50);
+}
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => showView(b.dataset.v));
+
+// ---------- map ----------
+const map = L.map('map', {zoomControl:false}).setView([13.75, 100.55], 10);
+L.control.zoom({position:'bottomright'}).addTo(map);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+const layer = L.layerGroup().addTo(map);
+let firstFit = true, draftMarker = null;
+
+function renderMap(){
+  layer.clearLayers();
+  const pts = [];
+  for (const s of S.sites) {
+    if (typeof s.lat !== 'number' || typeof s.lng !== 'number') continue;
+    const l = lvOf(s), size = l >= 2 ? 22 : 16;
+    const icon = L.divIcon({className:'', html:`<div class="pin" style="width:${size}px;height:${size}px;background:${colorOf(s)}"></div>`, iconSize:[size,size], iconAnchor:[size/2,size/2]});
+    L.marker([s.lat, s.lng], {icon, zIndexOffset: (l+1)*100, title: s.name}).on('click', () => openSheet(s.id)).addTo(layer);
+    pts.push([s.lat, s.lng]);
+  }
+  if (firstFit && pts.length) { firstFit = false; map.fitBounds(pts, {padding:[40,40], maxZoom:13}); }
+  const cnt = [0,0,0,0], nd = S.sites.filter(s => lvOf(s) < 0).length;
+  S.sites.forEach(s => { const l = lvOf(s); if (l >= 0) cnt[l]++; });
+  $('legend').innerHTML = cnt.map((n,i) => `<span class="chip"><span class="dot" style="background:${LV_HEX[i]}"></span>${LV_NAME[i]} <b>${n}</b></span>`).join('')
+    + `<span class="chip"><span class="dot" style="background:${ND_HEX}"></span>ไม่มีข้อมูล <b>${nd}</b></span>`;
+}
+map.on('click', e => {
+  if (!S.picking) return;
+  S.picking = false; $('pickbar').hidden = true;
+  $('fPos').value = e.latlng.lat.toFixed(6) + ', ' + e.latlng.lng.toFixed(6);
+  showDraft(e.latlng.lat, e.latlng.lng);
+  showView('manage'); $('fName').focus();
+});
+function showDraft(lat, lng){
+  if (draftMarker) map.removeLayer(draftMarker);
+  draftMarker = L.circleMarker([lat,lng], {radius:10, color:'#0d3b52', weight:3, dashArray:'4 3', fillOpacity:.1}).addTo(map);
+}
+$('btnPick').onclick = () => { S.picking = true; $('pickbar').hidden = false; showView('map'); };
+$('pickCancel').onclick = () => { S.picking = false; $('pickbar').hidden = true; showView('manage'); };
+
+// ---------- list ----------
+function renderList(){
+  const q = S.q.trim().toLowerCase();
+  let arr = S.sites.filter(s => !q || (s.name||'').toLowerCase().includes(q));
+  if (S.filter === 'risk') arr = arr.filter(s => lvOf(s) >= 1);
+  if (S.filter === 'nd') arr = arr.filter(s => lvOf(s) < 0);
+  arr.sort((a,b) => (b.risk?.score ?? -1) - (a.risk?.score ?? -1) || (a.name||'').localeCompare(b.name||'', 'th'));
+  if (!S.sites.length) {
+    $('list').innerHTML = `<div class="empty">ยังไม่มี site ในบัญชีนี้${canEdit() ? '<br><button class="btn pri" style="margin-top:10px" onclick="showView(\'manage\')">เพิ่ม site แรก</button>' : '<br>ให้ผู้ดูแลของบริษัทเพิ่ม site'}</div>`;
+    return;
+  }
+  if (!arr.length) { $('list').innerHTML = '<div class="empty">ไม่พบ site ตามเงื่อนไขนี้</div>'; return; }
+  $('list').innerHTML = arr.map(s => {
+    const r = s.risk || {}, l = lvOf(s), sc = r.score ?? 0;
+    const meta = [TYPE_NAME[s.type] || 'อื่น ๆ',
+      r.rain24h != null ? `ฝน ${r.rain24h} มม.` : null,
+      r.wlPercent != null ? `คลอง ${r.wlPercent}%` : null,
+      (r.traffyCount||0) + (r.longdoCount||0) ? `แจ้งท่วม ${(r.traffyCount||0)+(r.longdoCount||0)} จุด` : null].filter(Boolean).join(' · ');
+    return `<button class="row" onclick="openSheet('${esc(s.id)}')">
+      <div class="gauge"><i style="height:${l<0?0:Math.max(6,sc)}%;background:${colorOf(s)}"></i></div>
+      <div class="body"><h3>${esc(s.name)}</h3>
+        <div class="meta"><span class="lvl" style="background:${colorOf(s)}">${l<0?'ไม่มีข้อมูล':LV_NAME[l]}</span> ${esc(meta)}</div></div>
+      <div class="score" style="color:${colorOf(s)}">${l<0?'–':sc}</div></button>`;
+  }).join('');
+}
+$('q').oninput = e => { S.q = e.target.value; renderList(); };
+document.querySelectorAll('#flt button').forEach(b => b.onclick = () => {
+  S.filter = b.dataset.f; document.querySelectorAll('#flt button').forEach(x => x.classList.toggle('on', x === b)); renderList();
+});
+
+// ---------- sheet ----------
+function openSheet(id){
+  const s = S.sites.find(x => x.id === id); if (!s) return;
+  const r = s.risk, l = lvOf(s);
+  const stale = r?.updatedAt && (Date.now() - new Date(r.updatedAt).getTime()) > STALE_MIN*60000;
+  let h = `<h3>${esc(s.name)}</h3><div class="sub">${esc(TYPE_NAME[s.type] || 'อื่น ๆ')}${s.address ? ' · ' + esc(s.address) : ''}</div>`;
+  if (!r) {
+    h += `<div class="box">รอประเมินรอบแรก ระบบคำนวณความเสี่ยงทุก 15 นาที</div>`;
+  } else {
+    h += `<div class="big" style="background:${colorOf(s)}"><div class="n">${l<0?'–':r.score}</div>
+      <div><div class="t">${l<0?'ไม่มีข้อมูลรอบ site นี้':LV_NAME[l]}</div><small>คะแนนความเสี่ยง 0–100 · อัปเดต ${ago(r.updatedAt)}</small></div></div>`;
+    if (stale) h += `<div class="box stale">⚠️ ข้อมูลเก่ากว่า ${STALE_MIN} นาที ระบบประมวลผลอาจหยุดชั่วคราว</div>`;
+    const road = r.road;
+    h += `<dl class="kv">
+      <dt>ฝน 24 ชม.</dt><dd>${r.rain24h != null ? `${r.rain24h} มม. <small>(สถานีวัดห่าง ${r.rainDistKm ?? '-'} กม.)</small>` : 'ไม่มีสถานีวัดใกล้'}${r.rainStale ? ' <span class="stale">⏱ ค่ารอบก่อน</span>' : ''}</dd>
+      <dt>น้ำในคลอง</dt><dd>${r.wlPercent != null ? `${r.wlPercent}% ของตลิ่ง <small>${esc(r.wlStation || '')} (${r.wlDistKm ?? '-'} กม.)</small>` : 'ไม่มีสถานีวัดใน 5 กม.'}${r.wlStale ? ' <span class="stale">⏱ ค่ารอบก่อน</span>' : ''}</dd>
+      <dt>น้ำท่วมถนน</dt><dd>${road ? `${road.maxCm} ซม. <small>${esc(road.name || '')} (${road.distKm} กม.)</small>` : 'ไม่มีเซนเซอร์ใน 1 กม.'}</dd>
+      <dt>แจ้งน้ำท่วมใกล้</dt><dd>${(r.traffyCount||0) + (r.longdoCount||0)} จุด ในรัศมี 1.5 กม.</dd>
+      <dt>ประเมินล่าสุด</dt><dd>${tStr(r.updatedAt)}</dd></dl>`;
+    if (r.reports?.length) h += `<div class="box"><b>รายงานเหตุใกล้ site</b><br>${r.reports.map(x => `• ${esc(x.title)} <small>(${esc(x.src)}, ${x.distKm} กม.)</small>`).join('<br>')}</div>`;
+  }
+  if (s.note) h += `<div class="box">📝 ${esc(s.note)}</div>`;
+  h += `<p class="hint">ประเมินจากข้อมูลสาธารณะ (ฝน ระดับน้ำคลอง เซนเซอร์ถนน และการแจ้งเหตุ) ไม่ใช่การวัดที่ site โดยตรง ควรให้ผู้รับผิดชอบหน้างานยืนยัน</p>`;
+  h += `<div class="actions"><a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}">นำทาง</a>
+    <button class="btn" onclick="zoomTo('${esc(s.id)}')">ดูบนแผนที่</button>
+    ${canEdit() ? `<button class="btn" onclick="editSite('${esc(s.id)}')">แก้ไข</button>` : ''}</div>`;
+  $('sheetBody').innerHTML = h;
+  $('sheet').classList.add('on'); $('sheetBg').classList.add('on');
+}
+function closeSheet(){ $('sheet').classList.remove('on'); $('sheetBg').classList.remove('on'); }
+$('sheetBg').onclick = $('sheetX').onclick = closeSheet;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+function zoomTo(id){ const s = S.sites.find(x => x.id === id); if (!s) return; closeSheet(); showView('map'); map.setView([s.lat, s.lng], 15); }
+
+// ---------- manage: sites ----------
+function parsePos(txt){
+  txt = (txt || '').trim(); let m;
+  if ((m = txt.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/))) return [+m[1], +m[2]];
+  if ((m = txt.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/))) return [+m[1], +m[2]];
+  if ((m = txt.match(/[?&](?:q|query|destination|ll)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/i))) return [+m[1], +m[2]];
+  if ((m = txt.match(/^(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)$/))) return [+m[1], +m[2]];
+  return null;
+}
+function validLatLng(p){ return p && Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180 && !(p[0] === 0 && p[1] === 0); }
+function atLimit(add){
+  const max = S.tenant?.maxSites;
+  if (!S.isSuper && max && S.sites.length + add > max) { toast(`แพ็กเกจนี้รองรับ ${max} site — ติดต่อ Enertric เพื่อเพิ่ม`, 4000); return true; }
+  return false;
+}
+function clearForm(){ ['fId','fName','fPos','fAddr','fNote'].forEach(k => $(k).value = ''); $('fType').value = 'factory'; $('btnSave').textContent = 'บันทึก site';
+  if (draftMarker) { map.removeLayer(draftMarker); draftMarker = null; } }
+$('btnClear').onclick = clearForm;
+$('fPos').onchange = () => { const p = parsePos($('fPos').value); if (validLatLng(p)) { $('fPos').value = p[0] + ', ' + p[1]; showDraft(p[0], p[1]); } };
+function editSite(id){
+  const s = S.sites.find(x => x.id === id); if (!s) return;
+  closeSheet(); showView('manage');
+  $('fId').value = s.id; $('fName').value = s.name || ''; $('fType').value = s.type || 'other';
+  $('fPos').value = s.lat + ', ' + s.lng; $('fAddr').value = s.address || ''; $('fNote').value = s.note || '';
+  $('btnSave').textContent = 'บันทึกการแก้ไข'; $('fName').focus(); window.scrollTo(0,0); $('v-manage').scrollTop = 0;
+}
+$('btnSave').onclick = async () => {
+  const id = $('fId').value, name = $('fName').value.trim(), p = parsePos($('fPos').value);
+  if (!name) return toast('ใส่ชื่อ site');
+  if (!validLatLng(p)) return toast('ตำแหน่งไม่ถูกต้อง ใส่ lat,lng หรือวางลิงก์ Google Maps');
+  const data = {name, type:$('fType').value, lat:p[0], lng:p[1], address:$('fAddr').value.trim(), note:$('fNote').value.trim(), updatedAt:TS(), updatedBy:S.email};
+  $('btnSave').disabled = true;
+  try {
+    if (id) await db.doc(`tenants/${S.tenantId}/sites/${id}`).update(data);
+    else { if (atLimit(1)) return; await db.collection(`tenants/${S.tenantId}/sites`).add({...data, createdAt:TS(), createdBy:S.email}); }
+    toast(id ? 'บันทึกการแก้ไขแล้ว' : 'เพิ่ม site แล้ว — จะเห็นความเสี่ยงในรอบประเมินถัดไป (≤15 นาที)', 3500);
+    clearForm();
+  } catch(e) { toast('บันทึกไม่ได้: ' + e.code); }
+  finally { $('btnSave').disabled = false; }
+};
+async function deleteSite(id){
+  const s = S.sites.find(x => x.id === id); if (!s) return;
+  if (!confirm(`ลบ "${s.name}" ออกจากระบบ?`)) return;
+  try { await db.doc(`tenants/${S.tenantId}/sites/${id}`).delete(); toast('ลบ site แล้ว'); } catch(e) { toast('ลบไม่ได้: ' + e.code); }
+}
+function renderSiteLines(){
+  $('sitesTitle').textContent = `site ทั้งหมด (${S.sites.length}${S.tenant?.maxSites ? ' / ' + S.tenant.maxSites : ''})`;
+  const arr = [...S.sites].sort((a,b) => (a.name||'').localeCompare(b.name||'', 'th'));
+  $('siteLines').innerHTML = arr.length ? arr.map(s => `<div class="line"><div class="x"><span class="dot" style="display:inline-block;background:${colorOf(s)};margin-right:6px"></span>${esc(s.name)} <small>${esc(TYPE_NAME[s.type] || '')}</small></div>
+    <div style="display:flex;gap:6px;flex:none"><button class="btn sm" onclick="editSite('${esc(s.id)}')">แก้ไข</button><button class="btn sm bad" onclick="deleteSite('${esc(s.id)}')">ลบ</button></div></div>`).join('')
+    : '<div class="hint" style="margin:0">ยังไม่มี site</div>';
+}
+$('btnImport').onclick = async () => {
+  const rows = $('csv').value.split(/\r?\n/).map(l => l.split(',').map(x => x.trim())).filter(c => c.length >= 3 && c[0]);
+  const ok = [], bad = [];
+  rows.forEach((c, i) => {
+    const lat = parseFloat(c[1]), lng = parseFloat(c[2]);
+    if (!validLatLng([lat, lng])) { if (i > 0 || !isNaN(lat)) bad.push(c[0]); return; }   // แถวหัวตารางข้ามได้
+    const type = TYPE_NAME[c[3]] ? c[3] : 'other';
+    ok.push({name:c[0].slice(0,120), type, lat, lng, address:(c.slice(4).join(', ') || '').slice(0,300), note:''});
+  });
+  if (!ok.length) return toast('ไม่พบแถวที่ถูกต้อง รูปแบบ: ชื่อ, lat, lng, ประเภท, ที่อยู่');
+  if (atLimit(ok.length)) return;
+  if (!confirm(`นำเข้า ${ok.length} site${bad.length ? ` (ข้าม ${bad.length} แถวที่ตำแหน่งไม่ถูกต้อง)` : ''}?`)) return;
+  $('btnImport').disabled = true;
+  try {
+    for (let i = 0; i < ok.length; i += 400) {
+      const b = db.batch();
+      ok.slice(i, i+400).forEach(d => b.set(db.collection(`tenants/${S.tenantId}/sites`).doc(), {...d, createdAt:TS(), createdBy:S.email, updatedAt:TS(), updatedBy:S.email}));
+      await b.commit();
+    }
+    $('csv').value = ''; toast(`นำเข้า ${ok.length} site แล้ว`);
+  } catch(e) { toast('นำเข้าไม่สำเร็จ: ' + e.code); }
+  finally { $('btnImport').disabled = false; }
+};
+
+// ---------- manage: members + LINE (owner) ----------
+function renderMembers(){
+  const arr = [...S.members].sort((a,b) => a.id.localeCompare(b.id));
+  $('memberLines').innerHTML = arr.map(m => `<div class="line"><div class="x">${esc(m.id)} <span class="tag">${ROLE_NAME[m.role] || m.role}</span></div>
+    ${m.id !== S.email ? `<button class="btn sm bad" onclick="removeMember('${esc(m.id)}')">นำออก</button>` : '<small>คุณ</small>'}</div>`).join('') || '<div class="hint" style="margin:0">ยังไม่มีผู้ใช้</div>';
+}
+$('btnAddMember').onclick = async () => {
+  const email = $('mEmail').value.trim().toLowerCase(), r = $('mRole').value;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast('อีเมลไม่ถูกต้อง');
+  if (email === S.email) return toast('แก้สิทธิ์ของตัวเองไม่ได้');
+  try {
+    await db.doc('members/' + email).set({email, tenantId:S.tenantId, role:r, addedAt:TS(), addedBy:S.email});
+    $('mEmail').value = ''; toast('เพิ่มผู้ใช้แล้ว');
+  } catch(e) { toast(e.code === 'permission-denied' ? 'อีเมลนี้ใช้กับบริษัทอื่นอยู่ หรือคุณไม่มีสิทธิ์' : 'เพิ่มไม่ได้: ' + e.code, 4000); }
+};
+async function removeMember(email){
+  if (!confirm(`นำ ${email} ออกจากบริษัทนี้?`)) return;
+  try { await db.doc('members/' + email).delete(); toast('นำออกแล้ว'); } catch(e) { toast('นำออกไม่ได้: ' + e.code); }
+}
+$('btnLine').onclick = async () => {
+  const v = $('lineTo').value.trim();
+  if (v && !/^[CUR][0-9a-f]{32}$/.test(v)) return toast('LINE ID ต้องขึ้นต้นด้วย C, U หรือ R ตามด้วย 32 ตัวอักษร');
+  try { await db.doc('tenants/' + S.tenantId).update({lineTo:v, updatedAt:TS(), updatedBy:S.email}); toast('บันทึกแล้ว'); }
+  catch(e) { toast('บันทึกไม่ได้: ' + e.code); }
+};
+
+// ---------- super admin: tenants ----------
+function renderTenants(){
+  $('tenantLines').innerHTML = S.tenants.map(t => `<div class="line"><div class="x"><b>${esc(t.name || t.id)}</b> <small>${esc(t.id)} · สูงสุด ${t.maxSites ?? '-'} site</small>
+      ${t.active === false ? '<span class="tag off">ระงับ</span>' : ''}</div>
+    <div style="display:flex;gap:6px;flex:none">
+      <button class="btn sm" onclick="openTenant('${esc(t.id)}');showView('list')">เปิด</button>
+      <button class="btn sm" onclick="setMax('${esc(t.id)}')">แก้จำนวน</button>
+      <button class="btn sm ${t.active === false ? '' : 'bad'}" onclick="toggleTenant('${esc(t.id)}')">${t.active === false ? 'เปิดใช้' : 'ระงับ'}</button></div></div>`).join('')
+    || '<div class="hint" style="margin:0">ยังไม่มีลูกค้า</div>';
+}
+$('btnTenant').onclick = async () => {
+  const id = $('tId').value.trim().toLowerCase(), name = $('tName').value.trim(), owner = $('tOwner').value.trim().toLowerCase(), max = parseInt($('tMax').value) || 20;
+  if (!/^[a-z0-9-]{3,40}$/.test(id)) return toast('รหัสลูกค้าใช้ a-z 0-9 และ - ยาว 3–40 ตัว');
+  if (!name) return toast('ใส่ชื่อบริษัท');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(owner)) return toast('อีเมลเจ้าของบัญชีไม่ถูกต้อง');
+  if (S.tenants.some(t => t.id === id)) return toast('รหัสลูกค้านี้มีอยู่แล้ว');
+  try {
+    const ex = await db.doc('members/' + owner).get();
+    if (ex.exists && ex.data().tenantId !== id) return toast(`อีเมลนี้เป็นผู้ใช้ของ ${ex.data().tenantId} อยู่แล้ว`, 4000);
+    const b = db.batch();
+    b.set(db.doc('tenants/' + id), {name, active:true, plan:'standard', maxSites:max, lineTo:'', createdAt:TS(), createdBy:S.email});
+    b.set(db.doc('members/' + owner), {email:owner, tenantId:id, role:'owner', addedAt:TS(), addedBy:S.email});
+    await b.commit();
+    ['tId','tName','tOwner'].forEach(k => $(k).value = '');
+    toast('สร้างลูกค้าแล้ว'); openTenant(id);
+  } catch(e) { toast('สร้างไม่ได้: ' + e.code); }
+};
+async function toggleTenant(id){
+  const t = S.tenants.find(x => x.id === id); if (!t) return;
+  const on = t.active === false;
+  if (!on && !confirm(`ระงับ "${t.name}"? ผู้ใช้ของบริษัทนี้จะดูข้อมูลไม่ได้และหยุดประเมิน`)) return;
+  try { await db.doc('tenants/' + id).update({active:on, updatedAt:TS(), updatedBy:S.email}); } catch(e) { toast('แก้ไม่ได้: ' + e.code); }
+}
+async function setMax(id){
+  const t = S.tenants.find(x => x.id === id); const v = parseInt(prompt('จำนวน site สูงสุด', t?.maxSites ?? 20));
+  if (!v || v < 1) return;
+  try { await db.doc('tenants/' + id).update({maxSites:v, updatedAt:TS(), updatedBy:S.email}); } catch(e) { toast('แก้ไม่ได้: ' + e.code); }
+}
+
+// ---------- render ----------
+function renderAll(){
+  renderMap(); renderList(); renderSiteLines();
+  const last = S.sites.map(s => s.risk?.updatedAt).filter(Boolean).sort().pop();
+  $('upd').innerHTML = last ? `อัปเดต<br>${ago(last).replace('ที่แล้ว','')}` : '';
+}
+setInterval(() => { if (S.sites.length) renderAll(); }, 60000);
+
+// deep link ?tab=list
+const tab = new URLSearchParams(location.search).get('tab'); if (['list','manage'].includes(tab)) showView(tab);
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
