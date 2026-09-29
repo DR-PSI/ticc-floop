@@ -321,7 +321,7 @@ const firebaseConfig = {
   messagingSenderId: "381474069339",
   appId: "1:381474069339:web:7e284e17eb59e25559587e"
 };
-const APP_VERSION = "ticcfloop-v8";
+const APP_VERSION = "ticcfloop-v9";
 
 const fbApp = firebase.initializeApp(firebaseConfig, "ticcfloop");
 const auth = fbApp.auth(), db = fbApp.firestore();
@@ -412,6 +412,17 @@ function aiFloodOf(s){
 const EVK = {flood:{ic:'🌊', name:'น้ำท่วม'}, wire:{ic:'⚡', name:'สายไฟ/ไฟฟ้า'}, fire:{ic:'🔥', name:'ไฟไหม้'}, quake:{ic:'〰️', name:'แผ่นดินไหว'}};
 const recentEvents = () => S.events.filter(e => hoursAgo(e.at) <= 24);
 const eventsFor = s => recentEvents().filter(e => e.siteId === s.id || (e.nearby || []).some(x => x.id === s.id));
+// เรื่องเดียวกันที่แจ้งซ้ำ (ประเภท + แหล่ง + ข้อความ + ระยะใกล้กัน) → แสดงบรรทัดเดียว เก็บรายการใหม่สุด และใช้รูปจากรายการใดก็ได้ที่มีรูป
+function groupEvents(arr){
+  const map = new Map(), out = [];
+  for (const e of arr) {
+    const key = [e.kind, e.src, String(e.title || '').trim(), e.siteId, Math.round((e.distKm || 0) * 10)].join('|');
+    const g = map.get(key);
+    if (g) { g.count++; if (!realPhoto(g) && realPhoto(e)) g.photo = e.photo; continue; }
+    const n = {...e, count: 1}; map.set(key, n); out.push(n);
+  }
+  return out;
+}
 // รูปแทนของ Traffy (โลโก้ศูนย์ กทม. 1555 ฯลฯ) — ไม่แสดง
 function realPhoto(e){
   const u = e.photo || ''; if (!u) return '';
@@ -426,7 +437,7 @@ function evHtml(e, withSite){
   e = {...e, photo: realPhoto(e)};
   const img = e.photo ? `<a href="${esc(e.photo)}" target="_blank" rel="noopener"><img src="${esc(e.photo)}" loading="lazy" referrerpolicy="no-referrer" alt="รูปจากผู้แจ้ง" onerror="this.parentNode.remove()"></a>` : '';
   return `<div class="ev"><span class="ic">${k.ic}</span><div class="tx">${esc(e.title)}
-    <small>${withSite ? `ใกล้ ${esc(e.siteName)} · ` : ''}ห่าง ${e.distKm} กม. · ${esc(e.src)} · ${ago(e.at)}${e.state ? ' · ' + esc(e.state) : ''}</small></div>${img}</div>`;
+    <small>${withSite ? `ใกล้ ${esc(e.siteName)} · ` : ''}ห่าง ${e.distKm} กม. · ${esc(e.src)} · ${ago(e.at)}${e.state ? ' · ' + esc(e.state) : ''}${e.count > 1 ? ` · แจ้ง ${e.count} ครั้ง` : ''}</small></div>${img}</div>`;
 }
 
 // ---------- auth ----------
@@ -649,7 +660,7 @@ function openSheet(id){
       <small>จากรายงาน ${ai.reports} เรื่อง · ${esc(modelLabel(ai.model))} · สรุปเมื่อ ${tStr(ai.updatedAt)} (สรุปใหม่ทุก 06:00 / 18:00) · AI อาจสรุปผิดพลาด</small></div>`;
   }
   // เหตุการณ์ใกล้ site
-  const evs = eventsFor(s);
+  const evs = groupEvents(eventsFor(s));
   if (evs.length) h += `<div class="box" style="background:#fff;border:1px solid var(--line)"><b>🚨 เหตุการณ์ใกล้ site (24 ชม.)</b>${evs.slice(0, 8).map(e => evHtml(e, false)).join('')}
     ${evs.length > 8 ? `<button class="btn sm" style="margin-top:6px" onclick="S.evSite='${esc(s.id)}';closeSheet();showView('events');renderEvents()">ดูทั้งหมด ${evs.length} เรื่อง</button>` : ''}</div>`;
   if (s.note) h += `<div class="box">📝 ${esc(s.note)}</div>`;
@@ -816,6 +827,7 @@ function renderEvents(){
   let arr = recentEvents();
   if (S.evKind !== 'all') arr = arr.filter(e => e.kind === S.evKind);
   if (sel.value) arr = arr.filter(e => e.siteId === sel.value || (e.nearby || []).some(x => x.id === sel.value));
+  arr = groupEvents(arr);
   if (S.evPhoto) arr = arr.filter(e => realPhoto(e));
   $('evList').innerHTML = arr.length ? arr.slice(0, 200).map(e => evHtml(e, true)).join('')
     : `<div class="hint" style="margin:0">${S.events.length ? 'ไม่มีเหตุการณ์ตามเงื่อนไขนี้' : 'ยังไม่มีเหตุการณ์ใกล้ site ใน 24 ชม. ที่ผ่านมา'}</div>`;
